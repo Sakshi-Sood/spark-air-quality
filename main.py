@@ -151,13 +151,19 @@ def run_analytics(spark: SparkSession) -> dict:
         "top_pollution_days": top_pollution_days(daily),
         "rdd_city_means": rdd_city_means(daily),
     }
+    # Each write is the action that runs that table's plan, so its time also
+    # includes filling a cache the first time a cached input is used.
+    write_seconds = {}
     for name, df in tables.items():
         t0 = time.perf_counter()
         write_parquet(df, ANALYTICS_DIR / name)
-        log.info("wrote %-26s in %5.1f s", name, time.perf_counter() - t0)
+        write_seconds[name] = round(time.perf_counter() - t0, 2)
+        log.info("wrote %-26s in %5.1f s", name, write_seconds[name])
     for df in (daily, long, scoped):
         df.unpersist()
-    return build_analytics_report(spark, list(tables), years)
+    report = build_analytics_report(spark, list(tables), years)
+    report["table_write_seconds"] = write_seconds
+    return report
 
 
 def build_analytics_report(spark: SparkSession, names: list[str], years: list[int]) -> dict:

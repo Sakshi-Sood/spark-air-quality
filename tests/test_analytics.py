@@ -106,6 +106,16 @@ def test_correlation_status_and_spearman(spark):
     assert result["short"].spearman_rho is None
 
 
+def test_correlation_n_counts_only_complete_pairs(spark):
+    xs = [float(i) for i in range(1, 41)]
+    ys = [None if i == 0 else x * 2 for i, x in enumerate(xs)]   # one null weather value
+    r = weather_correlations(_scoped(spark, "with_null", xs, ys),
+                             ["pm2_5_mean"], ["wind_speed_10m_max"], min_days=30).first()
+    # The null row is dropped before ranking, so n and both correlations use 39 pairs.
+    assert (r.n_days, r.status) == (39, "ok")
+    assert r.pearson_r == pytest.approx(1.0) and r.spearman_rho == pytest.approx(1.0)
+
+
 def test_weather_bins_labels_and_low_sample(spark):
     row = ("all", "All cities", "All year", 40.0, 60.0, 80.0, "<10 km/h", "Dry (<0.1 mm)", 25, 80)
     scoped = spark.createDataFrame([row], GROUP_COLS + [
