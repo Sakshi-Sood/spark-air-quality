@@ -1,0 +1,14 @@
+# Pinned to match the existing local Spark installation (C:\Spark, Spark 3.5.9,
+# Scala 2.13, Java 8). Spark 3.5 does not support pandas 3 or numpy 2.
+# Spark itself and Java are NOT installed from here; PySpark uses SPARK_HOME.
+pyspark==3.5.9
+pandas==2.3.3
+numpy==1.26.4
+pyarrow==25.0.1
+
+# Dashboard
+streamlit==1.65.0
+plotly==7.1.0
+
+# Only needed by download_data.py
+datasets==5.1.0

@@ -1,0 +1,38 @@
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Raw datasets (~18 MB; re-create with download_data.py)
+data/*.csv
+
+# Generated pipeline outputs (re-create with main.py)
+outputs/
+
+# Spark / Hive local artefacts
+spark-warehouse/
+metastore_db/
+derby.log
+checkpoint/
+*.crc
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# Secrets and local config
+.env
+.streamlit/secrets.toml
+
+# Editor / OS files
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
