@@ -1,10 +1,26 @@
 [theme]
 base = "light"
-primaryColor = "#2a78d6"
-backgroundColor = "#fcfcfb"
-secondaryBackgroundColor = "#f4f3ef"
-textColor = "#0b0b0b"
+primaryColor = "#14614f"
+backgroundColor = "#f5f6f4"
+secondaryBackgroundColor = "#edf0ed"
+textColor = "#1d2a26"
+linkColor = "#14614f"
 font = "sans serif"
+baseFontSize = 15
+headingFontSizes = ["1.75rem", "1.25rem", "1.05rem"]
+headingFontWeights = [650, 600, 600]
+metricValueFontSize = "1.75rem"
+baseRadius = "0.5rem"
+borderColor = "#dde3df"
+showWidgetBorder = true
+showSidebarBorder = true
+
+[theme.sidebar]
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f3f5f3"
+
+[client]
+toolbarMode = "viewer"
 
 [server]
 headless = true

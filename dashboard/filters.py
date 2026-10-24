@@ -8,7 +8,9 @@ from dataclasses import dataclass
 import pandas as pd
 import streamlit as st
 
-from dashboard.labels import MODEL_DATA_NOTE, OZONE_NOTE, label
+from dashboard.labels import (EXCEEDANCE_NOTE, MODEL_DATA_NOTE, OZONE_NOTE,
+                              PROVISIONAL_NOTE, SHORT_MODEL_NOTE,
+                              SHORT_OZONE_NOTE, label)
 from src.config import SUMMARY_POLLUTANTS
 
 
@@ -20,21 +22,27 @@ class Filters:
 
 
 def render_sidebar(cities: pd.DataFrame) -> Filters:
-    st.sidebar.header("Filters")
-    pollutant = st.sidebar.selectbox("Pollutant / index", SUMMARY_POLLUTANTS,
-                                     format_func=label, key="pollutant")
-    regions = st.sidebar.multiselect("Regions", sorted(cities["region"].unique()),
-                                     key="regions", placeholder="All regions")
+    sidebar = st.sidebar
+    sidebar.caption("**SHARED FILTERS** · apply to every page")
+    pollutant = sidebar.selectbox("Indicator", SUMMARY_POLLUTANTS,
+                                  format_func=label, key="pollutant")
+    if pollutant == "india_aqi":
+        sidebar.warning(SHORT_OZONE_NOTE, icon=":material/warning:")
+    regions = sidebar.multiselect("Regions", sorted(cities["region"].unique()),
+                                  key="regions", placeholder="All regions")
     in_regions = cities[cities["region"].isin(regions)] if regions else cities
     options = sorted(in_regions["city"])
     # Drop cities that the region filter just removed (Streamlit rejects
     # default values that are not among the options).
     if "cities" in st.session_state:
         st.session_state["cities"] = [c for c in st.session_state["cities"] if c in options]
-    selected = st.sidebar.multiselect("Cities", options, key="cities", placeholder="All cities")
-    if pollutant == "india_aqi":
-        st.sidebar.warning(OZONE_NOTE)
-    st.sidebar.caption(MODEL_DATA_NOTE)
+    selected = sidebar.multiselect("Cities", options, key="cities", placeholder="All cities")
+
+    sidebar.divider()
+    sidebar.caption(f":material/info: {SHORT_MODEL_NOTE}")
+    with sidebar.expander("About the data"):
+        for note in (MODEL_DATA_NOTE, OZONE_NOTE, EXCEEDANCE_NOTE, PROVISIONAL_NOTE):
+            st.caption(note)
     # No cities picked: an empty list means "all", unless regions narrow it.
     effective_cities = selected if selected else (options if regions else [])
     filters = Filters(pollutant, regions, effective_cities)

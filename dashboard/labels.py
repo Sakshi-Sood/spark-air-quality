@@ -18,6 +18,12 @@ POLLUTANT_NAMES = {
     "dust_mean": "Dust (24-h mean)",
     "aod_mean": "Aerosol optical depth",
 }
+# Short names for tight spaces such as KPI card labels.
+SHORT_NAMES = {
+    "pm2_5_mean": "PM2.5", "india_aqi_pm": "AQI (PM only)", "pm10_mean": "PM10",
+    "india_aqi": "AQI (all)", "no2_mean": "NO₂", "so2_mean": "SO₂", "o3_8h_max": "O₃",
+    "co_8h_max": "CO", "dust_mean": "Dust", "aod_mean": "AOD",
+}
 WEATHER_NAMES = {
     "temperature_2m_mean": "Mean temperature",
     "relative_humidity_2m_mean": "Relative humidity",
@@ -61,17 +67,25 @@ TREND_NOTE = (
     "Only three complete years (2023–2025) exist. Year-to-year differences are descriptive "
     "and are too few to establish a long-term trend."
 )
+SHORT_MODEL_NOTE = "Modelled data (CAMS air quality, ERA5 weather), not station measurements."
+SHORT_OZONE_NOTE = "This index is ozone-inflated by the model; prefer PM2.5 or the PM-only AQI."
 
-# ---------------------------------------------------------------- colours (validated palette)
-SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]
-PRIMARY = SERIES[0]
-MUTED = "#898781"
-YEAR_RAMP = ["#86b6ef", "#3987e5", "#1c5cab"]           # ordinal, light -> dark
-SEQUENTIAL = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"]
-DIVERGING = [[0.0, "#1c5cab"], [0.25, "#86b6ef"], [0.5, "#f0efec"],
-             [0.75, "#f0a09f"], [1.0, "#b8302f"]]
-# CPCB's published AQI colour convention, kept because viewers know it.
-AQI_COLOURS = {"Good": "#00b050", "Satisfactory": "#92d050", "Moderate": "#e6c200",
-               "Poor": "#ff9900", "Very Poor": "#e0281e", "Severe": "#a0001e"}
+# ---------------------------------------------------------------- colours
+# Validated with the dataviz palette checker on a white surface: the categorical
+# set passes lightness, chroma, colour-blind separation and 3:1 contrast; the
+# year ramp passes the ordinal checks (one hue, monotone lightness).
+ACCENT = "#14614f"                                       # deep teal: theme and emphasis
+SERIES = ["#008a70", "#d97a26", "#3b6fb6", "#bf4d80", "#7f9a2c", "#6b5bd2"]
+PRIMARY = "#2f8f78"                                      # single-series marks
+MUTED = "#a3aca8"
+YEAR_RAMP = ["#76b5a4", "#2f8f78", "#14614f"]           # ordinal, light -> dark
+SEQUENTIAL = ["#e3f1ec", "#a9d5c8", "#5fae9b", "#2f8f78", "#14614f", "#0b3f33"]
+# Negative = teal, positive = terracotta, neutral grey at zero.
+DIVERGING = [[0.0, "#14614f"], [0.25, "#76b5a4"], [0.5, "#f0efec"],
+             [0.75, "#e3a07f"], [1.0, "#a8432a"]]
+# CPCB's AQI colour convention (green -> yellow -> red -> maroon), kept because
+# viewers know it, but muted so it does not overpower the rest of the page.
+AQI_COLOURS = {"Good": "#3f9a5f", "Satisfactory": "#a2c96f", "Moderate": "#e2c254",
+               "Poor": "#e7954f", "Very Poor": "#cf5641", "Severe": "#8c2b2b"}
 MAX_COMPARED_CITIES = len(SERIES)
 

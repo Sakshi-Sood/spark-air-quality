@@ -61,38 +61,62 @@ def season_means(seasonal: pd.DataFrame, pollutant: str) -> pd.DataFrame:
     return out.sort_values("season")
 
 
+def bin_scope(regions: list[str], cities: list[str]) -> tuple[str, str]:
+    """Weather-bin scope matching the filters: one city, one region, or all cities."""
+    if len(cities) == 1:
+        return "city", cities[0]
+    if len(regions) == 1 and (not cities or len(cities) > 1):
+        return "region", regions[0]
+    return "all", "All cities"
+
+
 def key_findings(city_stats: pd.DataFrame, region_stats: pd.DataFrame,
                  seasonal: pd.DataFrame, bins: pd.DataFrame,
-                 pollutant: str = "pm2_5_mean", unit: str = "µg/m³") -> list[str]:
-    """Short findings computed from the analytical tables (never hardcoded)."""
+                 pollutant: str = "pm2_5_mean", name: str = "PM2.5", unit: str = "µg/m³",
+                 regions: list[str] | None = None, cities: list[str] | None = None) -> list[str]:
+    """Short findings computed from the analytical tables for the current filters.
+
+    Nothing is hardcoded: every sentence is built from table values, and a
+    finding is skipped when the filtered data cannot support it.
+    """
+    regions, cities = regions or [], cities or []
     findings = []
-    cities = city_stats[city_stats["pollutant"] == pollutant].sort_values("mean")
-    if not cities.empty:
-        hi, lo = cities.iloc[-1], cities.iloc[0]
-        findings.append(f"Highest mean modelled PM2.5: **{hi.city}** ({hi['mean']:.1f} {unit}); "
+    selected = filter_places(city_stats[city_stats["pollutant"] == pollutant], regions, cities)
+    selected = selected.sort_values("mean")
+    if len(selected) == 1:
+        only = selected.iloc[0]
+        findings.append(f"**{only.city}**: mean modelled {name} {only['mean']:.1f} {unit}.")
+    elif len(selected) > 1:
+        hi, lo = selected.iloc[-1], selected.iloc[0]
+        findings.append(f"Highest mean modelled {name}: **{hi.city}** ({hi['mean']:.1f} {unit}); "
                         f"lowest: **{lo.city}** ({lo['mean']:.1f} {unit}).")
-        above, days = cities["days_above_naaqs"].sum(), cities["n_days"].sum()
-        if days:
-            findings.append(f"**{100 * above / days:.1f} %** of all city-days have a modelled "
-                            f"PM2.5 24-h mean above the NAAQS value (not a compliance result).")
-    regions = region_stats[region_stats["pollutant"] == pollutant].sort_values("mean")
-    if not regions.empty:
-        hi, lo = regions.iloc[-1], regions.iloc[0]
+    if not selected.empty and selected["days_above_naaqs"].notna().any():
+        above, days = selected["days_above_naaqs"].sum(), selected["n_days"].sum()
+        findings.append(f"**{100 * above / days:.1f} %** of city-days have a modelled {name} "
+                        f"above the NAAQS 24-h value (not a compliance result).")
+    groups = region_stats[region_stats["pollutant"] == pollutant]
+    if regions:
+        groups = groups[groups["region"].isin(regions)]
+    if len(groups) > 1:
+        groups = groups.sort_values("mean")
+        hi, lo = groups.iloc[-1], groups.iloc[0]
         findings.append(f"Highest regional mean: **{hi.region}** ({hi['mean']:.1f} {unit}, "
                         f"{hi.n_cities} cities); lowest: **{lo.region}** ({lo['mean']:.1f} {unit}).")
-    seasons = season_means(seasonal, pollutant)
-    if not seasons.empty:
+    seasons = season_means(filter_places(seasonal, regions, cities), pollutant)
+    if len(seasons) > 1:
         hi = seasons.loc[seasons["mean"].idxmax()]
         lo = seasons.loc[seasons["mean"].idxmin()]
         findings.append(f"Across complete seasons, **{hi.season}** has the highest mean "
                         f"({hi['mean']:.1f} {unit}) and **{lo.season}** the lowest ({lo['mean']:.1f}).")
-    wind = bins[(bins["scope_type"] == "all") & (bins["season_group"] == ALL_YEAR)
+    scope_type, scope = bin_scope(regions, cities)
+    wind = bins[(bins["scope_type"] == scope_type) & (bins["scope"] == scope)
+                & (bins["season_group"] == ALL_YEAR)
                 & (bins["weather_variable"] == "wind_speed_10m_max")
                 & (bins["pollutant"] == pollutant)].sort_values("bin_order")
     if len(wind) >= 2:
         calm, windy = wind.iloc[0], wind.iloc[-1]
-        findings.append(f"Mean PM2.5 is {calm['mean']:.1f} {unit} on days with wind {calm.bin_label} "
-                        f"and {windy['mean']:.1f} on days with wind {windy.bin_label} "
+        findings.append(f"{scope}: mean {name} is {calm['mean']:.1f} {unit} on days with wind "
+                        f"{calm.bin_label} and {windy['mean']:.1f} with wind {windy.bin_label} "
                         f"(an association, not proof of cause).")
     return findings
 

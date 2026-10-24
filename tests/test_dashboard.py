@@ -6,7 +6,7 @@ outputs/ folder, so these tests are skipped until the pipeline has run.
 import pandas as pd
 import pytest
 
-from dashboard.logic import (assign_stable_colours, correlation_strength,
+from dashboard.logic import (assign_stable_colours, bin_scope, correlation_strength,
                              experiment_status, filter_places, key_findings,
                              season_means)
 from src.config import ANALYTICS_DIR, PROCESSED_DIR, PROJECT_ROOT
@@ -50,18 +50,38 @@ def test_season_means_ordered_by_imd_season():
     assert out.iloc[0]["mean"] == 55.0 and out.iloc[0]["season_years"] == 2
 
 
+FINDING_CITIES = pd.DataFrame({"pollutant": "pm2_5_mean", "city": ["X", "Y", "Z"],
+                               "region": ["R1", "R1", "R2"], "mean": [80.0, 10.0, 30.0],
+                               "days_above_naaqs": [50, 0, 10], "n_days": [100, 100, 100]})
+FINDING_REGIONS = pd.DataFrame({"pollutant": "pm2_5_mean", "region": ["R1", "R2"],
+                                "mean": [45.0, 30.0], "n_cities": [2, 1]})
+EMPTY = pd.DataFrame(columns=["pollutant", "city", "region", "year", "season", "mean", "scope_type",
+                              "scope", "season_group", "weather_variable", "bin_order"])
+
+
 def test_key_findings_are_computed_from_tables():
-    cities = pd.DataFrame({"pollutant": "pm2_5_mean", "city": ["X", "Y"], "mean": [80.0, 10.0],
-                           "days_above_naaqs": [50, 0], "n_days": [100, 100]})
-    regions = pd.DataFrame({"pollutant": "pm2_5_mean", "region": ["R1", "R2"],
-                            "mean": [40.0, 20.0], "n_cities": [3, 2]})
-    empty = pd.DataFrame(columns=["pollutant", "year", "season", "mean", "scope_type",
-                                  "season_group", "weather_variable", "bin_order"])
-    findings = key_findings(cities, regions, empty, empty)
+    findings = key_findings(FINDING_CITIES, FINDING_REGIONS, EMPTY, EMPTY)
     assert "**X** (80.0 µg/m³)" in findings[0] and "**Y**" in findings[0]
-    assert "**25.0 %**" in findings[1]
+    assert "**20.0 %**" in findings[1]                     # 60 of 300 city-days
     assert "**R1**" in findings[2]
     assert len(findings) == 3           # no seasonal or bin rows -> those findings are skipped
+
+
+def test_key_findings_follow_the_filters():
+    findings = key_findings(FINDING_CITIES, FINDING_REGIONS, EMPTY, EMPTY, regions=["R2"])
+    assert findings[0].startswith("**Z**")                 # single city in view
+    assert "**10.0 %**" in findings[1]
+    assert not any("regional mean" in f for f in findings)  # one region: no comparison
+    no_limit = FINDING_CITIES.assign(days_above_naaqs=None)
+    assert not any("NAAQS" in f for f in key_findings(no_limit, FINDING_REGIONS, EMPTY, EMPTY))
+
+
+@pytest.mark.parametrize("regions, cities, scope", [
+    ([], [], ("all", "All cities")), (["North"], [], ("region", "North")),
+    ([], ["Delhi"], ("city", "Delhi")), (["North"], ["Delhi", "Agra"], ("region", "North")),
+    (["North", "South"], [], ("all", "All cities"))])
+def test_bin_scope_matches_filters(regions, cities, scope):
+    assert bin_scope(regions, cities) == scope
 
 
 def test_experiments_pending_until_measured():
@@ -149,3 +169,26 @@ def test_missing_output_shows_message_not_traceback(app, monkeypatch, tmp_path):
     at = _open(app, "overview")
     assert any("Required pipeline output is missing" in e.value for e in at.error)
     loader.load_table.clear()
+
+
+def test_experiment_chart_uses_median_and_range_per_variant():
+    from dashboard.charts import experiment_comparison
+    runs = pd.DataFrame({"experiment": ["E1"] * 6 + ["E2"],   # test input only, never displayed
+                         "variant": ["8", "8", "8", "200", "200", "200", "4"],
+                         "seconds": [1.0, 2.0, 4.0, 5.0, 6.0, 9.0, 1.0]})
+    bar = experiment_comparison(runs, "E1").data[0]
+    assert list(bar.x) == ["8", "200"] and list(bar.y) == [2.0, 6.0]
+    assert list(bar.error_y.array) == [2.0, 3.0] and list(bar.error_y.arrayminus) == [1.0, 1.0]
+
+
+@needs_outputs
+def test_overview_kpis_and_findings_follow_region_filter(app):
+    at = _open(app, "overview")
+    values = {m.label: m.value for m in at.metric}
+    assert values["Cities in view"] == "50 of 50"
+    at.sidebar.multiselect(key="regions").set_value(["South"]).run()
+    values = {m.label: m.value for m in at.metric}
+    assert values["Cities in view"] == "13 of 50"
+    findings = " ".join(md.value for md in at.markdown if md.value.startswith("- "))
+    assert "13 selected cities" in " ".join(c.value for c in at.caption)
+    assert "Delhi" not in findings          # Delhi is not in the South region
