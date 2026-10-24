@@ -1,17 +1,26 @@
 """Pipeline entry point.
 
 Usage (from the project folder, with the venv's Python):
-    python main.py --stage validate   # validate raw CSVs -> validation_report.json
-    python main.py --stage process    # validate, then clean + join -> outputs/processed/
+    python main.py --stage validate    # validate raw CSVs -> validation_report.json
+    python main.py --stage process     # validate, then clean + join -> outputs/processed/
+    python main.py --stage analytics   # analytical tables from processed data -> outputs/analytics/
+    python main.py --stage all         # validate + process + analytics
 """
 import argparse
 import sys
 import time
 
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 
-from src.config import DAILY_KEY, PLANS_DIR, PROCESSED_DIR, REPORTS_DIR
-from src.data_validation import validate_all
+from src.analytics import (aqi_category_distribution, annual_city,
+                           city_pollutant_stats, complete_years,
+                           dataset_summary, group_pollutant_stats,
+                           monthly_city, pollution_episodes, rdd_city_means,
+                           seasonal_city, to_long, top_pollution_days)
+from src.config import (ANALYTICS_DIR, DAILY_KEY, PLANS_DIR, PROCESSED_DIR,
+                        REPORTS_DIR)
+from src.data_validation import count_nulls, validate_all
 from src.joins import (attach_city_metadata, attach_season_completeness,
                        join_air_quality_weather)
 from src.preprocessing import (preprocess_air_quality, preprocess_cities,
@@ -20,6 +29,8 @@ from src.schemas import read_raw_csv
 from src.spark_session import create_spark_session, describe_environment
 from src.utils import (explain_to_text, get_logger, parquet_file_stats,
                        write_json, write_parquet)
+from src.weather_analysis import (explode_scopes, weather_bin_stats,
+                                  weather_correlations)
 
 log = get_logger("main")
 
@@ -110,10 +121,70 @@ def build_processing_report(spark, aq_stats, weather_stats, join_stats) -> dict:
     }
 
 
+def run_analytics(spark: SparkSession) -> dict:
+    """Build every analytical table from the processed Parquet outputs."""
+    daily_path = PROCESSED_DIR / "daily_joined"
+    if not daily_path.exists():
+        sys.exit(f"{daily_path} not found. Run: python main.py --stage process")
+
+    # cache(): these three DataFrames each feed several output tables.
+    daily = spark.read.parquet(daily_path.as_posix()).cache()
+    long = to_long(daily).cache()
+    scoped = explode_scopes(daily).cache()
+    weather = spark.read.parquet((PROCESSED_DIR / "weather").as_posix())
+    air_quality_rows = spark.read.parquet((PROCESSED_DIR / "air_quality").as_posix()).count()
+    years = complete_years(daily)
+    log.info("Complete years (every city, every day): %s", years)
+
+    tables = {
+        "dataset_summary": dataset_summary(spark, daily, air_quality_rows, weather, years),
+        "city_pollutant_stats": city_pollutant_stats(long),
+        "region_pollutant_stats": group_pollutant_stats(spark, long, ["region"]),
+        "state_pollutant_stats": group_pollutant_stats(spark, long, ["state"]),
+        "aqi_category_distribution": aqi_category_distribution(daily),
+        "monthly_city": monthly_city(daily),
+        "annual_city": annual_city(long, years),
+        "seasonal_city": seasonal_city(long),
+        "weather_correlations": weather_correlations(scoped),
+        "weather_bin_stats": weather_bin_stats(scoped),
+        "pollution_episodes": pollution_episodes(daily),
+        "top_pollution_days": top_pollution_days(daily),
+        "rdd_city_means": rdd_city_means(daily),
+    }
+    for name, df in tables.items():
+        t0 = time.perf_counter()
+        write_parquet(df, ANALYTICS_DIR / name)
+        log.info("wrote %-26s in %5.1f s", name, time.perf_counter() - t0)
+    for df in (daily, long, scoped):
+        df.unpersist()
+    return build_analytics_report(spark, list(tables), years)
+
+
+def build_analytics_report(spark: SparkSession, names: list[str], years: list[int]) -> dict:
+    """Re-read each analytical table and record rows, schema, nulls and files."""
+    tables = {}
+    for name in names:
+        path = ANALYTICS_DIR / name
+        df = spark.read.parquet(path.as_posix())
+        nulls = count_nulls(df, df.columns)
+        tables[name] = {
+            "rows": df.count(),
+            "schema": [f"{f.name}:{f.dataType.simpleString()}" for f in df.schema.fields],
+            "columns_with_nulls": {c: n for c, n in nulls.items() if n},
+            **parquet_file_stats(path),
+        }
+    rdd = spark.read.parquet((ANALYTICS_DIR / "rdd_city_means").as_posix())
+    check = rdd.agg(F.count("*").alias("cities"), F.max("abs_diff").alias("max_abs_diff"),
+                    F.sum((~F.col("within_tolerance")).cast("int")).alias("failures")).first()
+    if check.failures:
+        sys.exit(f"RDD and DataFrame city means disagree for {check.failures} cities")
+    return {"complete_years": years, "tables": tables, "rdd_check": check.asDict()}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Air quality and weather Spark pipeline")
-    parser.add_argument("--stage", choices=["validate", "process"], default="process",
-                        help="'process' always runs validation first")
+    parser.add_argument("--stage", choices=["validate", "process", "analytics", "all"],
+                        default="all", help="'process' and 'all' always run validation first")
     args = parser.parse_args()
 
     start = time.perf_counter()
@@ -121,12 +192,14 @@ def main() -> None:
     startup_s = time.perf_counter() - start
     log.info("Spark %s started in %.1f s (UI: %s)", spark.version, startup_s,
              spark.sparkContext.uiWebUrl)
+    timings = {"spark_startup_s": startup_s}
     try:
-        t0 = time.perf_counter()
-        run_validation(spark)
-        timings = {"spark_startup_s": startup_s, "validation_s": time.perf_counter() - t0}
+        if args.stage in ("validate", "process", "all"):
+            t0 = time.perf_counter()
+            run_validation(spark)
+            timings["validation_s"] = time.perf_counter() - t0
 
-        if args.stage == "process":
+        if args.stage in ("process", "all"):
             t0 = time.perf_counter()
             report = run_processing(spark)
             timings["processing_s"] = time.perf_counter() - t0
@@ -137,6 +210,17 @@ def main() -> None:
                 log.info("%-16s %7d rows  %d file(s)  %6.2f MB", table, info["rows"],
                          info["files"], info["bytes"] / 1e6)
             log.info("Joins: %s", report["joins"])
+
+        if args.stage in ("analytics", "all"):
+            t0 = time.perf_counter()
+            report = run_analytics(spark)
+            timings["analytics_s"] = time.perf_counter() - t0
+            report["timings_seconds"] = {k: round(v, 2) for k, v in timings.items()}
+            report["environment"] = describe_environment(spark)
+            write_json(report, REPORTS_DIR / "analytics_report.json")
+            for table, info in report["tables"].items():
+                log.info("%-26s %7d rows  %d file(s)", table, info["rows"], info["files"])
+            log.info("RDD vs DataFrame check: %s", report["rdd_check"])
         log.info("Timings: %s", {k: round(v, 1) for k, v in timings.items()})
     finally:
         spark.stop()

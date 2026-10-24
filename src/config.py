@@ -103,3 +103,28 @@ RAIN_LABELS = [
 
 TEMPERATURE_BAND_C = 5        # band = lower edge, e.g. 20 means 20–25 °C
 HUMIDITY_BAND_PCT = 20        # band = lower edge, 100 % is folded into 80
+
+# ---------------------------------------------------------------- analytics (Phase 4)
+# Primary indicators: pm2_5_mean and india_aqi_pm. india_aqi is included only
+# with its ozone caveat (CAMS overestimates O3 over India, so O3 dominates it).
+INDEX_UNITS = {"india_aqi_pm": "index (PM only)", "india_aqi": "index (all pollutants)"}
+SUMMARY_POLLUTANTS = [
+    "pm2_5_mean", "india_aqi_pm", "pm10_mean", "india_aqi",
+    "no2_mean", "so2_mean", "o3_8h_max", "co_8h_max", "dust_mean", "aod_mean",
+]
+WEATHER_ANALYSIS_POLLUTANTS = ["pm2_5_mean", "india_aqi_pm", "pm10_mean", "no2_mean", "o3_8h_max"]
+BIN_POLLUTANTS = ["pm2_5_mean", "india_aqi_pm", "pm10_mean"]
+CORRELATION_WEATHER = [
+    "temperature_2m_mean", "relative_humidity_2m_mean",
+    "wind_speed_10m_max", "precipitation_sum",
+]
+MONTHLY_WEATHER = CORRELATION_WEATHER
+
+ALL_YEAR = "All year"                 # label for "no season filter"
+MIN_CORRELATION_DAYS = 30             # fewer paired days -> correlation not reported
+MIN_BIN_DAYS = 30                     # fewer days -> bin marked low_sample
+MIN_CITIES_PER_GROUP = 3              # regions/states below this are flagged
+EPISODE_MIN_DAYS = 3                  # consecutive days above the PM2.5 NAAQS limit
+TOP_DAYS_PER_CITY = 20
+PERCENTILE_ACCURACY = 10000           # percentile_approx: rank error <= 1/10000 of n
+RDD_CHECK_TOLERANCE = 1e-9            # relative tolerance, RDD vs DataFrame means
