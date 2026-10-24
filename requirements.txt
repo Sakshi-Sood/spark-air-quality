@@ -12,3 +12,6 @@ plotly==7.1.0
 
 # Only needed by download_data.py
 datasets==5.1.0
+
+# Tests
+pytest==8.4.2
