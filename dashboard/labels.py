@@ -71,21 +71,25 @@ SHORT_MODEL_NOTE = "Modelled data (CAMS air quality, ERA5 weather), not station 
 SHORT_OZONE_NOTE = "This index is ozone-inflated by the model; prefer PM2.5 or the PM-only AQI."
 
 # ---------------------------------------------------------------- colours
-# Validated with the dataviz palette checker on a white surface: the categorical
-# set passes lightness, chroma, colour-blind separation and 3:1 contrast; the
-# year ramp passes the ordinal checks (one hue, monotone lightness).
-ACCENT = "#14614f"                                       # deep teal: theme and emphasis
-SERIES = ["#008a70", "#d97a26", "#3b6fb6", "#bf4d80", "#7f9a2c", "#6b5bd2"]
-PRIMARY = "#2f8f78"                                      # single-series marks
-MUTED = "#a3aca8"
-YEAR_RAMP = ["#76b5a4", "#2f8f78", "#14614f"]           # ordinal, light -> dark
-SEQUENTIAL = ["#e3f1ec", "#a9d5c8", "#5fae9b", "#2f8f78", "#14614f", "#0b3f33"]
-# Negative = teal, positive = terracotta, neutral grey at zero.
-DIVERGING = [[0.0, "#14614f"], [0.25, "#76b5a4"], [0.5, "#f0efec"],
-             [0.75, "#e3a07f"], [1.0, "#a8432a"]]
+# The dashboard uses a dark theme (.streamlit/config.toml). SURFACE is the card
+# background that charts sit on; every chart colour below was validated with
+# the dataviz palette checker against it: the categorical set passes lightness,
+# chroma, colour-blind separation and 3:1 contrast; the year ramp passes the
+# ordinal checks (one hue, monotone lightness).
+PAGE = "#0d1311"
+SURFACE = "#151d1b"
+ACCENT = "#22a986"                                       # teal: theme and emphasis
+SERIES = ["#22a986", "#cc7a2a", "#5b8fd9", "#d0679a", "#86a032", "#8f7ee6"]
+PRIMARY = "#22a986"                                      # single-series marks
+MUTED = "#5f6b67"
+YEAR_RAMP = ["#2f7d6a", "#3fa98c", "#7fd3b9"]           # ordinal, oldest dim -> newest bright
+SEQUENTIAL = ["#173a32", "#1f5a4c", "#2a7a66", "#3fa98c", "#7fd3b9", "#c8f0e2"]   # low dim -> high bright
+# Negative = teal, positive = terracotta, neutral dark grey at zero.
+DIVERGING = [[0.0, "#2fb592"], [0.25, "#1f6b59"], [0.5, "#2c3431"],
+             [0.75, "#9a4f33"], [1.0, "#e0855f"]]
 # CPCB's AQI colour convention (green -> yellow -> red -> maroon), kept because
-# viewers know it, but muted so it does not overpower the rest of the page.
-AQI_COLOURS = {"Good": "#3f9a5f", "Satisfactory": "#a2c96f", "Moderate": "#e2c254",
-               "Poor": "#e7954f", "Very Poor": "#cf5641", "Severe": "#8c2b2b"}
+# viewers know it; Severe is lifted so it stays visible on the dark surface.
+AQI_COLOURS = {"Good": "#3f9a5f", "Satisfactory": "#7fb956", "Moderate": "#e6c14a",
+               "Poor": "#e7954f", "Very Poor": "#cf5641", "Severe": "#a8406e"}
 MAX_COMPARED_CITIES = len(SERIES)
 

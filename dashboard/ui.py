@@ -1,7 +1,8 @@
 """Shared page-layout helpers so every page looks the same.
 
-Most styling comes from the theme in .streamlit/config.toml. The only custom
-CSS gives cards a white background. It targets the `st-key-<key>` class that
+Most styling comes from the dark theme in .streamlit/config.toml. The only
+custom CSS gives cards a raised surface colour (the one charts are validated
+against), slightly lighter than the page. It targets the `st-key-<key>` class that
 Streamlit documents for containers created with a key, rather than
 Streamlit's internal DOM structure.
 """
@@ -10,11 +11,13 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-CARD_CSS = """
+from dashboard.labels import SURFACE
+
+CARD_CSS = f"""
 <style>
-div[class*="st-key-card-"] { background: #ffffff; }
+div[class*="st-key-card-"] {{ background: {SURFACE}; }}
 /* Less empty space above the page title (falls back to the default if absent). */
-[data-testid="stMainBlockContainer"] { padding-top: 2.5rem; }
+[data-testid="stMainBlockContainer"] {{ padding-top: 2.5rem; }}
 </style>
 """
 PLOTLY_CONFIG = {"displaylogo": False,
@@ -31,7 +34,7 @@ def page_header(title: str, subtitle: str) -> None:
 
 
 def card(key: str, **kwargs):
-    """A bordered white container; use as `with card("name"):`."""
+    """A bordered card container; use as `with card("name"):`."""
     return st.container(border=True, key=f"card-{key}", **kwargs)
 
 

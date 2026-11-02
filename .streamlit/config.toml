@@ -1,23 +1,25 @@
 [theme]
-base = "light"
-primaryColor = "#14614f"
-backgroundColor = "#f5f6f4"
-secondaryBackgroundColor = "#edf0ed"
-textColor = "#1d2a26"
-linkColor = "#14614f"
+base = "dark"
+primaryColor = "#22a986"
+backgroundColor = "#0d1311"
+secondaryBackgroundColor = "#1b2522"
+textColor = "#e3ebe7"
+linkColor = "#5fd0b0"
+codeBackgroundColor = "#1b2522"
+dataframeHeaderBackgroundColor = "#1b2522"
 font = "sans serif"
 baseFontSize = 15
 headingFontSizes = ["1.75rem", "1.25rem", "1.05rem"]
 headingFontWeights = [650, 600, 600]
 metricValueFontSize = "1.75rem"
 baseRadius = "0.5rem"
-borderColor = "#dde3df"
+borderColor = "#2a3633"
 showWidgetBorder = true
 showSidebarBorder = true
 
 [theme.sidebar]
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f3f5f3"
+backgroundColor = "#111917"
+secondaryBackgroundColor = "#1b2522"
 
 [client]
 toolbarMode = "viewer"

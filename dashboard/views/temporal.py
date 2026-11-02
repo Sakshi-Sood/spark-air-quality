@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import streamlit as st
 
-from dashboard.charts import annual_bars, city_lines, episode_timeline, season_bars
+from dashboard.charts import INK_2, annual_bars, city_lines, episode_timeline, season_bars
 from dashboard.data_loader import (MissingOutputError, load_cities, load_daily,
                                    load_table, stop_with_missing)
 from dashboard.filters import get_filters
@@ -67,10 +67,10 @@ with tab_daily, card("t-daily"):
     else:
         fig = city_lines(daily.sort_values("date"), "date", pollutant, colours, label(pollutant))
         if pollutant in NAAQS_24H:
-            fig.add_hline(y=NAAQS_24H[pollutant], line_dash="dot", line_color="#5b6670", line_width=1,
+            fig.add_hline(y=NAAQS_24H[pollutant], line_dash="dot", line_color=INK_2, line_width=1,
                           annotation_text=f"NAAQS 24-h value, {NAAQS_24H[pollutant]:.0f}",
-                          annotation_font=dict(size=11, color="#5b6670"),
-                          annotation_bgcolor="rgba(255,255,255,0.85)",
+                          annotation_font=dict(size=11, color=INK_2),
+                          annotation_bgcolor="rgba(21,29,27,0.85)",
                           annotation_position="top right")
         show_chart(fig)
         notes = [EXCEEDANCE_NOTE] if pollutant in NAAQS_24H else []

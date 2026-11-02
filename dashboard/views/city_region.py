@@ -72,7 +72,7 @@ with tab_rank:
 
 with tab_map:
     with card("city-map"):
-        section(f"Mean {POLLUTANT_NAMES[pollutant]} by city", f"{unit} · darker = higher")
+        section(f"Mean {POLLUTANT_NAMES[pollutant]} by city", f"{unit} · brighter = higher")
         show_chart(city_map(cities, unit))
         st.caption("Points are the model grid cells at city centres. The base map is drawn "
                    "from Plotly's online map data, so it needs an internet connection.")

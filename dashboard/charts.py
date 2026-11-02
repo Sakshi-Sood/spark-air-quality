@@ -14,10 +14,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from dashboard.labels import (AQI_COLOURS, DIVERGING, MUTED, PRIMARY, SEQUENTIAL,
-                              SERIES, YEAR_RAMP)
+                              SERIES, SURFACE, YEAR_RAMP)
 from src.config import ALL_YEAR, AQI_BANDS, SEASON_ORDER
 
-INK, INK_2, GRID, AXIS = "#1d2a26", "#5b6670", "#e8ebe8", "#c9cfcb"
+# Text and axis tokens for the dark theme (text never wears a series colour).
+INK, INK_2, GRID, AXIS = "#e3ebe7", "#9aa8a3", "#22302c", "#3a4844"
 FONT = "Source Sans Pro, system-ui, -apple-system, Segoe UI, sans-serif"
 ROW_PX = 22          # height per category row in horizontal charts
 
@@ -32,7 +33,7 @@ def style(fig: go.Figure, x_title: str = "", y_title: str = "",
         showlegend=legend,
         legend=dict(orientation="h", yanchor="bottom", y=1.01, x=0, title_text="",
                     font=dict(size=12, color=INK_2)),
-        hoverlabel=dict(bgcolor="white", bordercolor=AXIS, font=dict(family=FONT, color=INK, size=12)),
+        hoverlabel=dict(bgcolor="#1f2a27", bordercolor=AXIS, font=dict(family=FONT, color=INK, size=12)),
     )
     fig.update_xaxes(gridcolor=GRID, linecolor=AXIS, zerolinecolor=AXIS, tickfont=dict(color=INK_2),
                      title_font=dict(color=INK_2, size=12), automargin=True)
@@ -80,11 +81,11 @@ def ranking_with_distribution(df: pd.DataFrame, unit: str) -> go.Figure:
     fig.add_trace(go.Box(
         y=data["city"], q1=data["p25"], median=data["median"], q3=data["p75"],
         lowerfence=data["min"], upperfence=data["p95"], orientation="h", name="distribution",
-        marker_color=PRIMARY, line_width=1.2, fillcolor="rgba(47,143,120,0.18)",
+        marker_color=PRIMARY, line_width=1.2, fillcolor="rgba(34,169,134,0.22)",
         hoverinfo="x+y"), row=1, col=2)
     fig.add_trace(go.Scatter(
         x=data["max"], y=data["city"], mode="markers", name="maximum",
-        marker=dict(size=7, color="white", line=dict(color=INK_2, width=1.2)),
+        marker=dict(size=7, color=SURFACE, line=dict(color=INK_2, width=1.2)),
         hovertemplate=f"<b>%{{y}}</b><br>Maximum %{{x:.1f}} {unit}<extra></extra>"), row=1, col=2)
     fig.update_layout(bargap=0.35)
     for annotation in fig.layout.annotations:          # subplot titles
@@ -98,11 +99,13 @@ def city_map(df: pd.DataFrame, unit: str) -> go.Figure:
     fig = px.scatter_geo(df, lat="latitude", lon="longitude", color="mean", hover_name="city",
                          hover_data={"region": True, "mean": ":.1f", "latitude": False, "longitude": False},
                          color_continuous_scale=SEQUENTIAL[1:])
-    fig.update_traces(marker=dict(size=11, line=dict(width=1, color="white")))
+    fig.update_traces(marker=dict(size=11, line=dict(width=1, color=SURFACE)))
     fig.update_geos(fitbounds="locations", showcountries=True, countrycolor=AXIS,
-                    showland=True, landcolor="#eef1ee", showocean=True, oceancolor="#f7f9f8",
-                    showframe=False, lakecolor="#f7f9f8", projection_type="mercator")
-    fig.update_layout(coloraxis_colorbar=dict(title=dict(text=unit, font=dict(size=12)),
+                    showland=True, landcolor="#1f2a27", showocean=True, oceancolor=SURFACE,
+                    showframe=False, lakecolor=SURFACE, coastlinecolor=AXIS,
+                    bgcolor="rgba(0,0,0,0)", projection_type="mercator")
+    fig.update_layout(coloraxis_colorbar=dict(title=dict(text=unit, font=dict(size=12, color=INK_2)),
+                                              tickfont=dict(color=INK_2),
                                               thickness=12, len=0.7))
     fig = style(fig, height=540, legend=False)
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
@@ -116,7 +119,7 @@ def aqi_stack(df: pd.DataFrame) -> go.Figure:
     fig = px.bar(data, x="percent", y="city", color="category", orientation="h",
                  category_orders={"category": order, "city": list(dict.fromkeys(data["city"]))},
                  color_discrete_map=AQI_COLOURS, custom_data=["days"])
-    fig.update_traces(marker_line_width=1, marker_line_color="white",
+    fig.update_traces(marker_line_width=1, marker_line_color=SURFACE,
                       hovertemplate="<b>%{y}</b><br>%{fullData.name}: %{x:.1f} % of days"
                                     " (%{customdata[0]} days)<extra></extra>")
     fig.update_layout(barmode="stack", bargap=0.3)
@@ -131,8 +134,8 @@ def correlation_heatmap(matrix: pd.DataFrame, metric: str) -> go.Figure:
     columns = [c.replace(" ", "<br>", 1) for c in matrix.columns]      # wrap, keep labels level
     fig = go.Figure(go.Heatmap(
         z=matrix.values, x=columns, y=list(matrix.index), zmin=-1, zmax=1,
-        colorscale=DIVERGING, texttemplate="%{z:.2f}", textfont=dict(size=13), xgap=3, ygap=3,
-        colorbar=dict(thickness=12, len=0.9, tickvals=[-1, -0.5, 0, 0.5, 1]),
+        colorscale=DIVERGING, texttemplate="%{z:.2f}", textfont=dict(size=13, color=INK), xgap=3, ygap=3,
+        colorbar=dict(thickness=12, len=0.9, tickvals=[-1, -0.5, 0, 0.5, 1], tickfont=dict(color=INK_2)),
         hovertemplate="%{y} vs %{x}<br>" + metric + " = %{z:.2f}<extra></extra>",
     ))
     fig.update_yaxes(autorange="reversed", showgrid=False)
@@ -210,7 +213,7 @@ def annual_bars(df: pd.DataFrame, y_title: str) -> go.Figure:
     data = df.assign(year=df["year"].astype(str))
     fig = px.bar(data, x="city", y="mean", color="year", barmode="group",
                  color_discrete_map=colour_map, category_orders={"year": list(colour_map)})
-    fig.update_traces(marker_line_width=1, marker_line_color="white",
+    fig.update_traces(marker_line_width=1, marker_line_color=SURFACE,
                       hovertemplate="<b>%{x}</b><br>%{fullData.name}: %{y:.1f}<extra></extra>")
     fig.update_layout(bargap=0.3, bargroupgap=0.05)
     return style(fig, "", y_title, height=360)
@@ -220,7 +223,7 @@ def season_bars(df: pd.DataFrame, colours: dict[str, str], y_title: str) -> go.F
     fig = px.bar(df, x="season", y="mean", color="city", barmode="group",
                  color_discrete_map=colours, category_orders={"season": SEASON_ORDER, "city": list(colours)},
                  custom_data=["season_years"])
-    fig.update_traces(marker_line_width=1, marker_line_color="white",
+    fig.update_traces(marker_line_width=1, marker_line_color=SURFACE,
                       hovertemplate="<b>%{fullData.name}</b><br>%{x}: %{y:.1f}"
                                     "<br>%{customdata[0]} complete season-years<extra></extra>")
     fig.update_layout(bargap=0.3, bargroupgap=0.05)

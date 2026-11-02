@@ -192,3 +192,18 @@ def test_overview_kpis_and_findings_follow_region_filter(app):
     findings = " ".join(md.value for md in at.markdown if md.value.startswith("- "))
     assert "13 selected cities" in " ".join(c.value for c in at.caption)
     assert "Delhi" not in findings          # Delhi is not in the South region
+
+
+def test_dark_theme_and_charts_agree():
+    """The theme is dark, and charts/cards use the dark tokens, not light-only colours."""
+    import tomllib
+    from dashboard.charts import INK, ranking_bar
+    from dashboard.labels import SURFACE
+    from dashboard.ui import CARD_CSS
+    theme = tomllib.loads((PROJECT_ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8"))["theme"]
+    assert theme["base"] == "dark"
+    assert SURFACE in CARD_CSS and "#ffffff" not in CARD_CSS
+    df = pd.DataFrame({"label": ["A", "B"], "mean": [1.0, 2.0], "median": [1.0, 2.0], "p95": [1.0, 2.0]})
+    fig = ranking_bar(df, "label", "x", "u")
+    assert fig.layout.font.color == INK == theme["textColor"]
+    assert fig.layout.hoverlabel.bgcolor != "white"
