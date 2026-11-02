@@ -17,17 +17,17 @@ from dashboard.data_loader import MissingOutputError, load_cities, stop_with_mis
 from dashboard.filters import render_sidebar  # noqa: E402
 from dashboard.ui import apply_page_style  # noqa: E402
 
-st.set_page_config(page_title="India Air Quality & Weather · Spark analytics",
+st.set_page_config(page_title="India Air Quality & Weather · Spark Analytics",
                    page_icon=":material/air:", layout="wide")
 apply_page_style()
 
 VIEWS = Path("dashboard") / "views"
 pages = st.navigation([
     st.Page(VIEWS / "overview.py", title="Overview", icon=":material/dashboard:", default=True),
-    st.Page(VIEWS / "city_region.py", title="Cities & regions", icon=":material/location_city:"),
-    st.Page(VIEWS / "weather.py", title="Weather & pollution", icon=":material/air:"),
-    st.Page(VIEWS / "temporal.py", title="Trends over time", icon=":material/timeline:"),
-    st.Page(VIEWS / "performance.py", title="Spark performance", icon=":material/speed:"),
+    st.Page(VIEWS / "city_region.py", title="Cities & Regions", icon=":material/location_city:"),
+    st.Page(VIEWS / "weather.py", title="Weather & Pollution", icon=":material/air:"),
+    st.Page(VIEWS / "temporal.py", title="Trends Over Time", icon=":material/timeline:"),
+    st.Page(VIEWS / "performance.py", title="Spark Performance", icon=":material/speed:"),
 ])
 
 try:

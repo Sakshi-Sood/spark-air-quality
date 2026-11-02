@@ -21,7 +21,8 @@ except MissingOutputError as error:
     stop_with_missing(error)
 
 pollutant, unit = filters.pollutant, UNITS[filters.pollutant]
-page_header("Cities and regions", f"Indicator: **{label(pollutant)}** · change it in the sidebar")
+page_header("City and Regional Air Quality Rankings",
+            f"Indicator: **{label(pollutant)}** · change it in the sidebar")
 if pollutant == "india_aqi":
     st.warning(OZONE_NOTE, icon=":material/warning:")
 

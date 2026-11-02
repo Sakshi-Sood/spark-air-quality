@@ -36,7 +36,7 @@ candidates = filters.cities or [c for c in DEFAULT_CITIES if c in all_cities]
 if not filters.cities and filters.regions:
     candidates = sorted(monthly.loc[monthly["region"].isin(filters.regions), "city"].unique())
 compare = candidates[:MAX_COMPARED_CITIES]
-page_header("Trends over time",
+page_header("Pollution Trends Over Time",
             f"Indicator: **{label(pollutant)}** · comparing {', '.join(compare) or 'no cities'}")
 if pollutant == "india_aqi":
     st.warning(OZONE_NOTE, icon=":material/warning:")

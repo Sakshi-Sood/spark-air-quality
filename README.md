@@ -208,15 +208,15 @@ spark-air-quality/
 
 The dashboard has five pages that share sidebar filters for indicator, region and city:
 
-- **Overview:** headline figures, regional means, key findings
-- **Cities & regions:** city ranking with distributions, map, region/state tables, AQI category shares
-- **Weather & pollution:** correlation matrix, all-year vs within-season comparison, scatter plot, weather-bin means
-- **Trends over time:** daily, monthly, annual and seasonal views, pollution episodes, highest-PM2.5 days
-- **Spark performance:** recorded environment, data sizes, measured pipeline timings, status of the planned experiments, the saved physical plan
+- **Overview:** project purpose and scope, headline KPIs, regional means, key data-driven findings
+- **Cities & Regions:** city ranking with distributions, map, region/state tables, AQI category shares
+- **Weather & Pollution:** correlation matrix, all-year vs within-season comparison, scatter plot, weather-bin means
+- **Trends Over Time:** daily, monthly, annual and seasonal views, pollution episodes, highest-PM2.5 days
+- **Spark Performance:** execution environment, data sizes, measured pipeline timings, planned experiments table, saved physical plan
 
 ## Tests
 
-The `tests/` folder contains 45 test functions. Some are parametrised, so pytest collects 60 test cases. They cover:
+The `tests/` folder contains 45 test functions. Some are parametrised, so pytest collects 61 test cases. They cover:
 
 - header and malformed-row handling
 - duplicate classification
@@ -253,24 +253,13 @@ All results describe **modelled** data. They are computed from `outputs/analytic
 
 ## Project status
 
-| Phase | Status |
+| Component | Status |
 |---|---|
-| Setup, data inspection, pinned dataset | Done |
-| 3. Validation, preprocessing, joins | Done |
-| 4. Analytical tables | Done |
-| 5. Streamlit dashboard | Done |
-| 6. Performance experiments | **Pending** |
+| Data download, inspection, pinned dataset | Complete |
+| Validation, preprocessing, joins | Complete |
+| Analytical tables (13 tables, `outputs/analytics/`) | Complete |
+| Streamlit dashboard (5 pages) | Complete |
+| Test suite (61 test cases) | Complete |
+| Performance experiments (E1–E7) | Planned — not yet run |
 
-The planned experiments for Phase 6:
-
-| ID | Experiment |
-|---|---|
-| E1 | Shuffle partitions, with AQE off |
-| E2 | Input partitioning |
-| E3 | Caching vs no caching |
-| E4 | CSV vs Parquet, and inferred vs explicit schema |
-| E5 | Broadcast vs sort-merge join |
-| E6 | `local[1]`, `local[2]` and `local[4]` |
-| E7 | Input size |
-
-None of these experiments has been run yet. The only timings recorded so far are single pipeline runs, not controlled measurements.
+The baseline timings on the Spark Performance page come from single pipeline runs, not controlled repeated measurements. The planned experiments (E1–E7 in the dashboard) isolate individual Spark configuration choices and require controlled multi-run measurements to produce meaningful results.

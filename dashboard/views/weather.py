@@ -21,8 +21,8 @@ try:
 except MissingOutputError as error:
     stop_with_missing(error)
 
-page_header("Weather and pollution",
-            "How modelled pollution moves with weather · associations, not evidence of cause")
+page_header("Weather and Pollution Associations",
+            "How modelled pollution moves with weather · observational associations, not evidence of cause")
 pollutant = page_pollutant(filters, WEATHER_ANALYSIS_POLLUTANTS)
 
 # ---------------------------------------------------------------- page filters

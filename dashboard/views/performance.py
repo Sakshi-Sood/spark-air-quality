@@ -11,10 +11,13 @@ from dashboard.logic import EXPERIMENTS, experiment_status
 from dashboard.ui import (card, kpi_row, number_columns, page_header, section,
                           show_chart, table_height)
 
-page_header("Spark performance",
-            "How the pipeline ran · measured values only; experiments not yet run are marked Pending")
-st.caption(":material/info: All processing ran in **Spark local mode on one laptop** (driver and "
-           "executor threads in one JVM): parallel execution on one machine, not a multi-machine cluster.")
+page_header("Spark Performance",
+            "Execution environment, dataset sizes and measured pipeline timings")
+st.caption(
+    ":material/info: All processing ran in **Spark local mode** (`local[*]`) on one laptop — "
+    "driver and executor threads in a single JVM. This is parallel execution on one machine, "
+    "**not a distributed multi-node cluster**."
+)
 
 validation = load_report("validation_report")
 processing = load_report("processing_report")
@@ -93,14 +96,18 @@ with card("perf-experiments"):
     results = load_performance_results()
     status = experiment_status(results)
     measured = int((status["status"] == "Measured").sum())
-    section("Performance experiments (Phase 6)",
-            f"{measured} of {len(status)} measured · charts appear only for measured experiments")
+    section("Planned performance experiments",
+            f"Controlled measurements to evaluate Spark configuration choices "
+            f"({measured} of {len(status)} completed · charts appear only for completed experiments)")
     st.dataframe(status, hide_index=True, width="stretch", height=table_height(len(status)),
                  column_config={"experiment": st.column_config.TextColumn("ID", width="small"),
                                 "description": st.column_config.TextColumn("Experiment", width="large"),
                                 "status": st.column_config.TextColumn("Status", width="small")})
     if results is None:
-        st.caption(":material/schedule: No experiment has been run yet, so no results are shown.")
+        st.caption(
+            ":material/schedule: No controlled experiment has been run yet. "
+            "Results will appear here once measurements are collected."
+        )
     else:
         for experiment in [e for e in EXPERIMENTS if e in set(results["experiment"])]:
             section(f"{experiment} · {EXPERIMENTS[experiment]}")
