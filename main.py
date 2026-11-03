@@ -4,7 +4,8 @@ Usage (from the project folder, with the venv's Python):
     python main.py --stage validate    # validate raw CSVs -> validation_report.json
     python main.py --stage process     # validate, then clean + join -> outputs/processed/
     python main.py --stage analytics   # analytical tables from processed data -> outputs/analytics/
-    python main.py --stage all         # validate + process + analytics
+    python main.py --stage ml          # train, evaluate, and save ML models & forecasts -> outputs/ml/
+    python main.py --stage all         # validate + process + analytics + ml
 """
 import argparse
 import sys
@@ -23,6 +24,21 @@ from src.config import (ANALYTICS_DIR, DAILY_KEY, PLANS_DIR, PROCESSED_DIR,
 from src.data_validation import count_nulls, validate_all
 from src.joins import (attach_city_metadata, attach_season_completeness,
                        join_air_quality_weather)
+from src.ml.feature_engineering import (
+    create_forecasting_features,
+    split_time_series_data,
+    validate_and_filter_ml_data,
+)
+from src.ml.forecasting import generate_batch_forecasts
+from src.ml.ml_config import (
+    FORECAST_DATE_COL,
+    ML_PATHS,
+    PERSISTENCE_COL,
+    TARGET_COL,
+)
+from src.ml.model_evaluation import evaluate_models_and_baseline
+from src.ml.model_selection import save_ml_artifacts, select_best_model
+from src.ml.model_training import train_all_models
 from src.preprocessing import (preprocess_air_quality, preprocess_cities,
                                preprocess_weather, season_coverage)
 from src.schemas import read_raw_csv
@@ -187,9 +203,89 @@ def build_analytics_report(spark: SparkSession, names: list[str], years: list[in
     return {"complete_years": years, "tables": tables, "rdd_check": check.asDict()}
 
 
+def run_ml(spark: SparkSession) -> dict:
+    """Train MLlib regression models, evaluate against persistence baseline, and save artifacts."""
+    daily_path = PROCESSED_DIR / "daily_joined"
+    if not daily_path.exists():
+        sys.exit(f"{daily_path} not found. Run: python main.py --stage process")
+
+    log.info("Loading daily processed data for ML from %s...", daily_path)
+    daily = spark.read.parquet(daily_path.as_posix())
+
+    # 1. Feature Engineering
+    log.info("Engineering lag, rolling, and temporal features...")
+    features_df = create_forecasting_features(daily)
+    valid_ml_df = validate_and_filter_ml_data(features_df, require_target=True).cache()
+
+    # 2. Chronological Splitting
+    log.info("Performing chronological time-series splitting...")
+    train_df, val_df, test_df, split_metadata = split_time_series_data(valid_ml_df)
+    train_df = train_df.cache()
+    val_df = val_df.cache()
+    test_df = test_df.cache()
+
+    # 3. Model Training
+    log.info("Training Linear Regression, Decision Tree, and Random Forest...")
+    models = train_all_models(train_df)
+
+    # 4. Validation Evaluation
+    log.info("Evaluating models and persistence baseline on validation set...")
+    val_results = evaluate_models_and_baseline(models, val_df, dataset_name="validation")
+
+    # 5. Model Selection
+    best_key, justification = select_best_model(val_results)
+
+    # 6. Final Evaluation on Untouched Test Period
+    log.info("Evaluating all models on untouched chronological test set...")
+    test_results = evaluate_models_and_baseline(models, test_df, dataset_name="test")
+
+    # 7. Generate Test Predictions for Best Model
+    best_test_preds = models[best_key].transform(test_df)
+    test_predictions_df = (
+        best_test_preds
+        .select(
+            "city",
+            "date",
+            F.col(FORECAST_DATE_COL).alias("forecast_date"),
+            F.round(F.col(TARGET_COL), 2).alias("actual_target_pm2_5"),
+            F.round(F.col(PERSISTENCE_COL), 2).alias("persistence_pred"),
+            F.round(F.col("prediction"), 2).alias("predicted_pm2_5"),
+            F.round(F.col("prediction") - F.col(TARGET_COL), 2).alias("residual"),
+            "region",
+            "state",
+        )
+    )
+
+    # 8. Persist Models, Metrics, Predictions, and Report
+    log.info("Persisting ML models and reports to outputs/ml/...")
+    report = save_ml_artifacts(
+        models=models,
+        best_key=best_key,
+        val_results=val_results,
+        test_results=test_results,
+        test_predictions_df=test_predictions_df,
+        split_metadata=split_metadata,
+        justification=justification,
+    )
+
+    # 9. Batch Forecasting for All Cities (for Tomorrow)
+    log.info("Generating next-day forecasts for all cities...")
+    generate_batch_forecasts(
+        model=models[best_key],
+        daily_df=daily,
+        model_name=val_results[best_key]["model_name"],
+    )
+
+    # Cleanup caches
+    for df in (valid_ml_df, train_df, val_df, test_df):
+        df.unpersist()
+
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Air quality and weather Spark pipeline")
-    parser.add_argument("--stage", choices=["validate", "process", "analytics", "all"],
+    parser.add_argument("--stage", choices=["validate", "process", "analytics", "ml", "all"],
                         default="all", help="'process' and 'all' always run validation first")
     args = parser.parse_args()
 
@@ -227,6 +323,13 @@ def main() -> None:
             for table, info in report["tables"].items():
                 log.info("%-26s %7d rows  %d file(s)", table, info["rows"], info["files"])
             log.info("RDD vs DataFrame check: %s", report["rdd_check"])
+
+        if args.stage in ("ml", "all"):
+            t0 = time.perf_counter()
+            report = run_ml(spark)
+            timings["ml_s"] = time.perf_counter() - t0
+            log.info("ML stage complete. Best model: %s", report["selected_model"])
+
         log.info("Timings: %s", {k: round(v, 1) for k, v in timings.items()})
     finally:
         spark.stop()

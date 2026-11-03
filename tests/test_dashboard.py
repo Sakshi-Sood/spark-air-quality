@@ -12,7 +12,7 @@ from dashboard.logic import (assign_stable_colours, bin_scope, correlation_stren
 from src.config import ANALYTICS_DIR, PROCESSED_DIR, PROJECT_ROOT
 
 PAGES = {name: str(PROJECT_ROOT / "dashboard" / "views" / f"{name}.py")
-         for name in ("overview", "city_region", "weather", "temporal", "performance")}
+         for name in ("overview", "city_region", "weather", "temporal", "pm2_5_forecasting", "performance")}
 
 
 # ---------------------------------------------------------------- pure logic

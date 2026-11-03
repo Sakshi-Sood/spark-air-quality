@@ -27,6 +27,7 @@ pages = st.navigation([
     st.Page(VIEWS / "city_region.py", title="Cities & Regions", icon=":material/location_city:"),
     st.Page(VIEWS / "weather.py", title="Weather & Pollution", icon=":material/air:"),
     st.Page(VIEWS / "temporal.py", title="Trends Over Time", icon=":material/timeline:"),
+    st.Page(VIEWS / "pm2_5_forecasting.py", title="PM2.5 Forecasting", icon=":material/psychology:"),
     st.Page(VIEWS / "performance.py", title="Spark Performance", icon=":material/speed:"),
 ])
 

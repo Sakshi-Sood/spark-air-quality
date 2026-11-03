@@ -14,6 +14,11 @@ ANALYTICS_DIR = OUTPUT_DIR / "analytics"
 REPORTS_DIR = OUTPUT_DIR / "reports"
 PLANS_DIR = REPORTS_DIR / "plans"
 SPARK_EVENTS_DIR = OUTPUT_DIR / "spark-events"
+ML_DIR = OUTPUT_DIR / "ml"
+ML_MODELS_DIR = ML_DIR / "models"
+ML_METRICS_DIR = ML_DIR / "metrics"
+ML_PREDICTIONS_DIR = ML_DIR / "predictions"
+ML_REPORTS_DIR = ML_DIR / "reports"
 
 RAW_FILES = {
     "air_quality": DATA_DIR / "air_quality.csv",

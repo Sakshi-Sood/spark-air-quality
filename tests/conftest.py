@@ -13,7 +13,11 @@ from src.spark_session import create_spark_session  # noqa: E402
 def spark():
     session = create_spark_session(
         app_name="pipeline-tests", master="local[2]", shuffle_partitions=2,
-        event_log=False, extra_conf={"spark.ui.enabled": "false"},
+        event_log=False, extra_conf={
+            "spark.ui.enabled": "false",
+            "spark.python.worker.reuse": "true",
+            "spark.network.timeout": "300s",
+        },
     )
     yield session
     session.stop()

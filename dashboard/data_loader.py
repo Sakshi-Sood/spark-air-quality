@@ -11,7 +11,17 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-from src.config import ANALYTICS_DIR, OUTPUT_DIR, PLANS_DIR, PROCESSED_DIR, PROJECT_ROOT, REPORTS_DIR
+from src.config import (
+    ANALYTICS_DIR,
+    ML_METRICS_DIR,
+    ML_PREDICTIONS_DIR,
+    ML_REPORTS_DIR,
+    OUTPUT_DIR,
+    PLANS_DIR,
+    PROCESSED_DIR,
+    PROJECT_ROOT,
+    REPORTS_DIR,
+)
 
 RERUN_HINT = "Generate the outputs with: `.\\venv\\Scripts\\python.exe main.py --stage all`"
 
@@ -74,6 +84,42 @@ def load_performance_results() -> pd.DataFrame | None:
     """Phase 6 results, if the experiments have been run."""
     path = OUTPUT_DIR / "performance" / "results.csv"
     return pd.read_csv(path) if path.exists() else None
+
+
+@st.cache_data(show_spinner=False)
+def load_ml_comparison() -> dict | None:
+    """Model comparison report from outputs/ml/metrics/model_comparison.json."""
+    path = ML_METRICS_DIR / "model_comparison.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+@st.cache_data(show_spinner=False)
+def load_ml_evaluation() -> dict | None:
+    """Detailed evaluation metrics from outputs/ml/metrics/evaluation_metrics.json."""
+    path = ML_METRICS_DIR / "evaluation_metrics.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+@st.cache_data(show_spinner=False)
+def load_ml_report() -> dict | None:
+    """Training report from outputs/ml/reports/ml_training_report.json."""
+    path = ML_REPORTS_DIR / "ml_training_report.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+@st.cache_data(show_spinner="Loading batch forecasts…")
+def load_ml_forecasts() -> pd.DataFrame:
+    """Next-day PM2.5 forecasts for all cities."""
+    path = _require(ML_PREDICTIONS_DIR / "forecast_results")
+    return pd.read_parquet(path)
+
+
+@st.cache_data(show_spinner="Loading test predictions…")
+def load_ml_test_predictions(cities: tuple[str, ...] | None = None) -> pd.DataFrame:
+    """Test set predictions and residuals."""
+    filters = [("city", "in", list(cities))] if cities else None
+    path = _require(ML_PREDICTIONS_DIR / "test_predictions")
+    return pd.read_parquet(path, filters=filters)
 
 
 def stop_with_missing(error: MissingOutputError) -> None:
